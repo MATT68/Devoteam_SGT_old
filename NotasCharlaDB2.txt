@@ -1,0 +1,98 @@
+
+ IBM DB2
+  - Linux 
+  - AIX 
+      (en el banco lo más extendido es RH 7.9)
+	  
+  - DB2 tb soporta Z/OS -mainframe-. No es del servicio de devoteamn.
+  
+  
+       ----------------------------------------------------------------------------
+  DB2 Linux:
+  Orden jerárquico de objetos en DB2:
+  
+   Objeto - Nomenclatura SGT
+  Instancia (ixnnnnnn    - x=[D]esarrillo - [T]Preproducción - [P]roducción )
+             itngsbac 
+			 - Podemos tener varias instancias en una misma máquina, pero no es habitual.
+             			 
+     --->   Bases de datos
+             - Lo habitual es una bd por instancia, pero en Eurocenter tenemos más de cinco. 
+			 - uxnnnnnn - 
+               utngsbac - BBDD de Preproducción de SIBAC. 
+
+           --->  Tablespaces : 
+                   - Hasta antes de la V9 eran "manuales" (porque se define a mano el container).
+                   Si hay que hacer una operativa para mantener el TS:                   
+				   Ej.  db2 "alter tablespace TBS_PWC27MIG
+       				   reduce ( FILE '/bbdd_iengpwcl/uengpwcl/datos/TBS_PWC27MIG' 150000 )";
+					   
+				   - Desde la V9.7 y v10.1 se extiende el uso de los ts de mantenimiento automático.
+                    
+                   Para su creación y mantenimiento, los comandos son más genéricos: 					
+		           Ej. db2 "ALTER TABLESPACE E172222 REDUCE MAX"
+
+	               Desde V10.1 está extendido el uso de STORAGE GROUPS:
+                   (en el banco se crean los stogroups apuntando a los filesystems de datos:
+				    Ejemplo:     /bbdd_itngesci/utngesci/datos)
+                     				   
+                   Al hacer  CREATE DB XXXXX
+				   Se crean por defecto un STORAGE GROUP (podemos crear más) que será
+				   donde se ubiquen los tablespaces. 
+                      			
+
+       ----------------------------------------------------------------------------								
+           - Ejemplo de los pasos al desplegar una bbdd en sistemas:
+       ----------------------------------------------------------------------------
+           -- Creamos la instancia db2:            
+           db2icrt ...  -u sa_web itmftext;
+
+           -- Creamos la bbdd   		   
+           db2 create db UTMFTEXT;
+
+           -- Se crea de forma automática: 
+              - Arbol del directorios en el dbpath
+              - Storage group por defecto y en él los tablespaces del sistema	
+		      - Tablas del catálogo: SYSIBM (vistas del  catálogo SYSCAT ... )
+                                    SYSIBM.SYSTABLES   --- SYSCAT.TABLES
+                                                        SYSCAT.TABLESPACES, SYSCAT.INDEXES ... 
+			  - db2diag.log (log de eventos) 											
+			  - LOGs ( ficheros con todas y cada una de las modificaciones de las tablas )
+  			  - 
+           create storage group datos in /bbdd_itngesci/utngesci/datos ;
+		   
+		   -- Creamos los ts :
+		   db2 create tablespace TBS_MFTEXT  (*) in stogroup datos;
+		   db2 create tablespace TBSI_MFTEXT in stogroup datos;			  
+           (* - no os fieis mucho que lo estoy escribiendo de cabeza )
+		   
+		   -- Gestionamos permisos (quitando los que se hayan concedido a PUBLIC)
+		   db2 grant / revoke ....
+		   
+		   
+		   -- Ya luego (el aplicativo ) EdS lanzará:
+           db2 create table ....
+            in   TBS_MFTEXT   ;
+
+			
+       ----------------------------------------------------------------------------
+	      Las transacciones, el batch y los logs.	
+       ----------------------------------------------------------------------------	  
+          - Transacción - front end - online: 
+		        - Conecta BBDD  
+				- Update table
+                - Insert table 
+                - (commit  -  rollback )				
+               				   
+          - Jobs - batch - back end : 
+		        - Conecta BBDD 
+                  - while 100.000.000   				
+				     - Update table
+				     - Insert table 
+                        - if 10.000 actualizaciones 
+					         ==> commit
+                 - except 			
+       			   -  rollback 				
+				   
+ 
+                     
